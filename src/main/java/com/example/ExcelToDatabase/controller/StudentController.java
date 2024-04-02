@@ -4,6 +4,7 @@ import com.example.ExcelToDatabase.dto.ResponseData;
 import com.example.ExcelToDatabase.entity.Student;
 import com.example.ExcelToDatabase.service.Impl.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,30 +14,22 @@ import java.util.List;
 @RestController
 @RequestMapping("/students")
 public class StudentController {
-
     @Autowired
-    private StudentService studentService;
+    private StudentService excelService;
 
     @PostMapping("/upload")
-    public ResponseEntity<ResponseData> uploadStudentsData(@RequestParam("file") MultipartFile file){
-        try {
-            studentService.saveStudent(file);
-            List<Student> students = studentService.getStudents();
-            return ResponseEntity.ok(new ResponseData("success", "200", "Student data added successfully",students));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.ok(new ResponseData("error", "500", "An error occurred while processing the file",null));
+    public ResponseEntity<ResponseData> uploadData(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ResponseData("error", "BAD_REQUEST", "File is empty", null));
         }
-    }
 
-    @GetMapping("/getStudents")
-    public ResponseEntity<ResponseData> getStudentsData(){
-        List<Student> students = studentService.getStudents();
-        ResponseData responseData;
-        if (students.isEmpty()) {
-            responseData = new ResponseData("success", "200", "No student data available", students);
-        } else {
-            responseData = new ResponseData("success", "200", "Student data retrieved successfully", students);
+        try {
+            excelService.saveData(file);
+            return ResponseEntity.ok(new ResponseData("success", "DEFAULT", "Data uploaded successfully", null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ResponseData("error", "INTERNAL_SERVER_ERROR", e.getMessage(), null));
         }
-        return ResponseEntity.ok(responseData);
     }
 }

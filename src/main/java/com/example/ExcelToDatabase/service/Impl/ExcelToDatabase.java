@@ -1,5 +1,6 @@
 package com.example.ExcelToDatabase.service.Impl;
 
+import com.example.ExcelToDatabase.entity.Employee;
 import com.example.ExcelToDatabase.entity.Student;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -12,97 +13,94 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
+
 import java.util.logging.Logger;
 
 public class ExcelToDatabase {
 
     private static final Logger logger = Logger.getLogger(ExcelToDatabase.class.getName());
 
-    public static List<Student> getStudentDetails(InputStream inputStream) {
+    public static List<Object> getDetails(InputStream inputStream, String... sheetNames) {
 
-        if (inputStream != null) {
-            List<Student> students = new ArrayList<>();
+        if (inputStream != null && sheetNames != null && sheetNames.length > 0) {
+            List<Object> data = new ArrayList<>();
 
             try {
                 XSSFWorkbook workbook = new XSSFWorkbook(inputStream);
-                XSSFSheet sheet = workbook.getSheet("Student");
 
-                int lastRowNum = sheet.getLastRowNum(); // Get the index of the last row containing data
+                for (String sheetName : sheetNames) {
+                    XSSFSheet sheet = workbook.getSheet(sheetName);
 
-                for (int rowIndex = 1; rowIndex <= lastRowNum; rowIndex++) { // Start from index 1 to skip header row
-                    Row row = sheet.getRow(rowIndex);
-                    if (row == null || isRowEmpty(row)) {
-                        break; // Stop iterating if an empty row is encountered
-                    }
-                    int rowNum = row.getRowNum(); // Get the current row number
-                    Iterator<Cell> cellIterator = row.iterator();
-                    int cellIndex = 0;
-                    Student student = new Student();
-                    boolean validRow = true;
-                    while (cellIterator.hasNext()) {
-                        Cell cell = cellIterator.next();
-                        if (cellIndex == 0 && (cell == null || cell.getCellType() == CellType.BLANK || (cell.getCellType() == CellType.STRING && cell.getStringCellValue().isEmpty()))) {
-                            validRow = false;
-                            logger.log(Level.INFO, "Skipping row {0} due to null or empty ID.", rowNum);
-                            break;
-                        }
-                        switch (cellIndex) {
-                            case 0 -> {
-                                try {
-                                    if (cell.getCellType() == CellType.NUMERIC) {
-                                        student.setId((int) cell.getNumericCellValue());
-                                    } else if (cell.getCellType() == CellType.STRING && !cell.getStringCellValue().isEmpty()) {
-                                        student.setId(Integer.parseInt(cell.getStringCellValue()));
+                    if (sheet != null) {
+                        int lastRowNum = sheet.getLastRowNum();
+
+                        switch (sheetName.toLowerCase()) {
+                            case "student":
+                                List<Student> students = new ArrayList<>();
+                                for (int rowIndex = 1; rowIndex <= lastRowNum; rowIndex++) {
+                                    Row row = sheet.getRow(rowIndex);
+                                    if (row == null || isRowEmpty(row)) {
+                                        break;
                                     }
-                                } catch (NumberFormatException e) {
-                                    validRow = false;
-                                    logger.log(Level.INFO, "Skipping row {0} due to non-numeric ID.", rowNum);
-                                }
-                            }
-                            case 1 -> {
-                                if (cell.getCellType() == CellType.STRING) {
-                                    student.setName(cell.getStringCellValue());
-                                } else {
-                                    validRow = false;
-                                    logger.log(Level.INFO, "Skipping row {0} due to non-string name.", rowNum);
-                                }
-                            }
-                            case 2 -> {
-                                if (cell.getCellType() == CellType.NUMERIC) {
-                                    int age = (int) cell.getNumericCellValue();
-                                    if (age < 0) {
-                                        validRow = false;
-                                        logger.log(Level.INFO, "Skipping row {0} due to negative age.", rowNum);
-                                    } else {
-                                        student.setAge(age);
+                                    Student student = new Student();
+                                    Iterator<Cell> cellIterator = row.cellIterator();
+                                    while (cellIterator.hasNext()) {
+                                        Cell cell = cellIterator.next();
+                                        switch (cell.getColumnIndex()) {
+                                            case 0:
+                                                student.setId((int) cell.getNumericCellValue());
+                                                break;
+                                            case 1:
+                                                student.setName(cell.getStringCellValue());
+                                                break;
+                                            case 2:
+                                                student.setAge((int) cell.getNumericCellValue());
+                                                break;
+                                            case 3:
+                                                student.setGrade(cell.getStringCellValue());
+                                                break;
+                                        }
                                     }
-                                } else {
-                                    validRow = false;
-                                    logger.log(Level.INFO, "Skipping row {0} due to non-numeric age.", rowNum);
+                                    students.add(student);
                                 }
-                            }
-                            case 3 -> {
-                                if (cell.getCellType() == CellType.STRING) {
-                                    student.setGrade(cell.getStringCellValue());
-                                } else {
-                                    validRow = false;
-                                    logger.log(Level.INFO, "Skipping row {0} due to non-string grade.", rowNum);
+                                data.addAll(students);
+                                break;
+                            case "employee":
+                                List<Employee> employees = new ArrayList<>();
+                                for (int rowIndex = 1; rowIndex <= lastRowNum; rowIndex++) {
+                                    Row row = sheet.getRow(rowIndex);
+                                    if (row == null || isRowEmpty(row)) {
+                                        break;
+                                    }
+                                    Employee employee = new Employee();
+                                    Iterator<Cell> cellIterator = row.cellIterator();
+                                    while (cellIterator.hasNext()) {
+                                        Cell cell = cellIterator.next();
+                                        switch (cell.getColumnIndex()) {
+                                            case 0:
+                                                employee.setId((int) cell.getNumericCellValue());
+                                                break;
+                                            case 1:
+                                                employee.setName(cell.getStringCellValue());
+                                                break;
+                                            case 2:
+                                                employee.setSalary(cell.getNumericCellValue());
+                                                break;
+                                        }
+                                    }
+                                    employees.add(employee);
                                 }
-                            }
+                                data.addAll(employees);
+                                break;
                         }
-                        cellIndex++;
-                    }
-                    if (validRow) {
-                        students.add(student);
                     }
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            return students;
+            return data;
         } else {
-            return null;
+            return new ArrayList<>();
         }
     }
 
